@@ -7,9 +7,10 @@ Created on Thu Apr  7 12:06:06 2016
 import pandas as pd
 import matplotlib.pyplot as plt
 import urllib2
+import requests
 import json
 
-master = pd.read_csv('nUrve_master_0321.csv')  
+master = pd.read_csv('nUrve_master_0321.csv')
 sampleB = pd.read_csv('pilotB_sample1.csv')
 
 mykey = 'b901157a817d3058367b22fdabcc6596'
@@ -45,9 +46,13 @@ Zip = '9810' # ZIPCODE
 #str_call = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat='+LAT+'&lon='+LON+'&wsapikey='+mykey+'&format=JSON'
 
 call = 'http://api.walkscore.com/score?format=xml&address='+Stnum+'%'+Stname+'%20'+st_nm_su+'%20'+City+'%20'+State+'%20'+Zip+'&lat='+LAT+'&'+'lon='+LON+'&wsapikey='+mykey+'&format=json'
-url_web = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat=47.6085&lon=-122.3295&wsapikey='+mykey+'&format=json'
-request = urllib2.urlopen(url_web)
-metadata = json.loads(request.read())
+url_web = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat=47.6085&lon=-122.3295&wsapikey='+mykey+'&format=XML'
+request = requests.get(url_web)
+
+tree = ET.fromstring(request.content)
+for child in tree.findall('{http://walkscore.com/2008/results}walkscore'):
+    print child.text #This is the walkscore
+
 
 
 
