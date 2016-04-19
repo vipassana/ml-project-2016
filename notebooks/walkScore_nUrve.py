@@ -5,12 +5,13 @@ Created on Thu Apr  7 12:06:06 2016
 @author: saf537
 """
 import pandas as pd
-import matplotlib.pyplot as plt
-import urllib2
+#import matplotlib.pyplot as plt
+#import urllib2
 import requests
-import json
+#import json
 import xml.etree.ElementTree as ET
 import random
+import numpy as np
 
 master = pd.read_csv('nUrve_master_0321.csv')
 sampleB = pd.read_csv('pilotB_sample1.csv')
@@ -36,8 +37,6 @@ nUrv_add = pd.read_csv('nUrveLocAdd.csv')
 """
 1119 8th Ave S, Seattle, WA
 
-"""
-
 Stnum = '1119' #ST_NUM
 Stname = '8th'
 st_nm_su = 'Ave' #ST_NAME_SU
@@ -48,14 +47,23 @@ State = 'WA'
 Zip = '9810' # ZIPCODE
 #str_call = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat='+LAT+'&lon='+LON+'&wsapikey='+mykey+'&format=JSON'
 
+"""
+
 nUrv_add = nUrv_add.rename(index=str, columns={"uniqueLatL": "uniqueLatLon"});
 data = pd.merge(nUrv_add,master,on='uniqueLatLon')
 
+df = pd.DataFrame([],columns = data.columns)
+df['walkscore'] = []
+
+spl_size = 50
+
 for key in group_keys:
-    rows = random.sample(data.index, 5000)
+    rows = random.sample(data.index, spl_size)
     samp = data.ix[rows]
-    data = data.drop[rows]
-    for i in range(0,1):
+    data = data.drop(rows)
+    samp['walkscore'] = np.zeros(len(samp))
+    wklist = []
+    for i in range(0,spl_size):
         Stnum = samp['ST_NUM'].ix[rows[i]] #ST_NUM
         Stname = samp['ST_NAME'].ix[rows[i]] 
         st_nm_su = samp['ST_NAME_SU'].ix[rows[i]]
@@ -71,7 +79,10 @@ for key in group_keys:
         
         tree = ET.fromstring(request.content)
         for child in tree.findall('{http://walkscore.com/2008/results}walkscore'):
+            wklist.append(child.text)
             print child.text #This is the walkscore
+    samp['walkscore'] = wklist
+    df.append(samp)
 
     
 
