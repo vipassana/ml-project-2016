@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import urllib2
 import requests
 import json
+import xml.etree.ElementTree as ET
 
 master = pd.read_csv('nUrve_master_0321.csv')
 sampleB = pd.read_csv('pilotB_sample1.csv')
