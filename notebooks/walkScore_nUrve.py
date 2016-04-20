@@ -23,7 +23,7 @@ group_keys = ['b901157a817d3058367b22fdabcc6596'] # Sara
 master['uniqueLatLon'] = master.apply(lambda x: str(x.GPS_LAT)+'|'+str(x.GPS_LON), axis=1)
 
 """
-This is how we created the file with unique locations to match with the parcels data.
+This is how we created the file with unique locations to match the parcels data.
 
 
 test = pd.DataFrame(master.groupby(['uniqueLatLon', 'GPS_LAT','GPS_LON'])['ID'].count())
@@ -32,9 +32,11 @@ test.to_csv('UniqueLocations.csv')
 
 """
 
-nUrv_add = pd.read_csv('nUrveLocAdd.csv')
+
 
 """
+SAMPLE CALL
+
 1119 8th Ave S, Seattle, WA
 
 Stnum = '1119' #ST_NUM
@@ -48,19 +50,19 @@ Zip = '9810' # ZIPCODE
 #str_call = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat='+LAT+'&lon='+LON+'&wsapikey='+mykey+'&format=JSON'
 
 """
-
+nUrv_add = pd.read_csv('nUrveLocAdd.csv')
 nUrv_add = nUrv_add.rename(index=str, columns={"uniqueLatL": "uniqueLatLon"});
-data = pd.merge(nUrv_add,master,on='uniqueLatLon')
+nUrv_add = nUrv_add[['uniqueLatLon',u'PID','ST_NUM', u'ST_NAME', u'ST_NAME_SU', u'UNIT_NUM',u'ZIPCODE', u'full_addre', u'Latitude', u'Longitude']]
 
-df = pd.DataFrame([],columns = data.columns)
+df = pd.DataFrame([],columns = nUrv_add.columns)
 df['walkscore'] = []
 
-spl_size = 50
+spl_size = 10
 
 for key in group_keys:
-    rows = random.sample(data.index, spl_size)
-    samp = data.ix[rows]
-    data = data.drop(rows)
+    rows = random.sample(nUrv_add.index, spl_size)
+    samp = nUrv_add.ix[rows]
+    nUrv_add = nUrv_add.drop(rows)
     samp['walkscore'] = np.zeros(len(samp))
     wklist = []
     for i in range(0,spl_size):
@@ -81,9 +83,14 @@ for key in group_keys:
         for child in tree.findall('{http://walkscore.com/2008/results}walkscore'):
             wklist.append(child.text)
             print child.text #This is the walkscore
+            print tree
+            """ ParseError: no element found: line 1, column 0"""
     samp['walkscore'] = wklist
     df.append(samp)
 
+
+samp = samp[['uniqueLatLon','walkscore']]
+data = pd.merge(samp,master,on='uniqueLatLon')
     
 
 #url = 'https://nycopendata.socrata.com/views/%s' % (dataId)
