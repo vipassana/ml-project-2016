@@ -12,6 +12,8 @@ import requests
 import xml.etree.ElementTree as ET
 import random
 import numpy as np
+import sklearn.linear_model as lm
+import matplotlib.pyplot as plt
 
 master = pd.read_csv('nUrve_master_0321.csv')
 sampleB = pd.read_csv('pilotB_sample1.csv')
@@ -81,7 +83,7 @@ for key in group_keys:
         
         tree = ET.fromstring(request.content)
         for child in tree.findall('{http://walkscore.com/2008/results}walkscore'):
-            wklist.append(child.text)
+            wklist.append(int(child.text))
             print child.text #This is the walkscore
             print tree
             """ ParseError: no element found: line 1, column 0"""
@@ -91,7 +93,27 @@ for key in group_keys:
 
 samp = samp[['uniqueLatLon','walkscore']]
 data = pd.merge(samp,master,on='uniqueLatLon')
+data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
     
+    
+# Create linear regression object
+regr = lm.LinearRegression()
+
+# Train the model using the training sets
+regr.fit(np.array(data['GPS_Speed']).reshape(len(data['GPS_Speed']),1), np.array(data['walkscore']).reshape(len(data['walkscore']),1))
+print('Coefficients: \n', regr.coef_)
+y_p = regr.predict(np.array(data['GPS_Speed']).reshape(len(data['GPS_Speed']),1))
+y = np.array(data['walkscore']).reshape(len(data['walkscore']),1)
+print("Residual sum of squares: %.2f" % np.mean((y_p - y) ** 2))
+
+# Plot outputs
+plt.scatter(data['GPS_Speed'], y,  color='black')
+plt.plot(data['GPS_Speed'], y_p, color='blue', linewidth=3)
+
+plt.xticks(())
+plt.yticks(())
+
+plt.show()
 
 #url = 'https://nycopendata.socrata.com/views/%s' % (dataId)
 
