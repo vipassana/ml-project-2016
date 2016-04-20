@@ -90,9 +90,9 @@ for key in group_keys:
     samp['walkscore'] = wklist
     df.append(samp)
 
-
 samp = samp[['uniqueLatLon','walkscore']]
 data = pd.merge(samp,master,on='uniqueLatLon')
+data.to_csv('full_data'+'0'+'.csv')
 data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
     
     
@@ -100,7 +100,7 @@ data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
 regr = lm.LinearRegression()
 
 # Train the model using the training sets
-regr.fit(np.array(data['GPS_Speed']).reshape(len(data['GPS_Speed']),1), np.array(data['walkscore']).reshape(len(data['walkscore']),1))
+regr.fit(np.array(data['GPS_Speed']).reshape(len(data['GPS_Speed']),1), np.adarray(data['walkscore']).reshape(len(data['walkscore']),1))
 print('Coefficients: \n', regr.coef_)
 y_p = regr.predict(np.array(data['GPS_Speed']).reshape(len(data['GPS_Speed']),1))
 y = np.array(data['walkscore']).reshape(len(data['walkscore']),1)
