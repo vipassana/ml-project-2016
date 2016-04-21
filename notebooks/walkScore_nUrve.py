@@ -14,9 +14,12 @@ import random
 import numpy as np
 import sklearn.linear_model as lm
 import matplotlib.pyplot as plt
+from xml.etree.ElementTree import ParseError
 
-master = pd.read_csv('nUrve_master_0321.csv')
-sampleB = pd.read_csv('pilotB_sample1.csv')
+random.seed('2339')
+
+master = pd.read_csv('../data/nUrve_master_0321.csv')
+sampleB = pd.read_csv('../data/pilotB_sample1.csv')
 
 
 group_keys = ['b901157a817d3058367b22fdabcc6596'] # Sara
@@ -52,7 +55,7 @@ Zip = '9810' # ZIPCODE
 #str_call = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat='+LAT+'&lon='+LON+'&wsapikey='+mykey+'&format=JSON'
 
 """
-nUrv_add = pd.read_csv('nUrveLocAdd.csv')
+nUrv_add = pd.read_csv('../data/nUrveLocAdd.csv')
 nUrv_add = nUrv_add.rename(index=str, columns={"uniqueLatL": "uniqueLatLon"});
 nUrv_add = nUrv_add[['uniqueLatLon',u'PID','ST_NUM', u'ST_NAME', u'ST_NAME_SU', u'UNIT_NUM',u'ZIPCODE', u'full_addre', u'Latitude', u'Longitude']]
 
@@ -64,29 +67,35 @@ spl_size = 10
 for key in group_keys:
     rows = random.sample(nUrv_add.index, spl_size)
     samp = nUrv_add.ix[rows]
+
     nUrv_add = nUrv_add.drop(rows)
     samp['walkscore'] = np.zeros(len(samp))
     wklist = []
+
     for i in range(0,spl_size):
         Stnum = samp['ST_NUM'].ix[rows[i]] #ST_NUM
-        Stname = samp['ST_NAME'].ix[rows[i]] 
+        Stname = samp['ST_NAME'].ix[rows[i]]
         st_nm_su = samp['ST_NAME_SU'].ix[rows[i]]
         LAT = samp['Latitude'].ix[rows[i]]
         LON = samp['Longitude'].ix[rows[i]] # sample -122.3295
         City = 'Boston'
         State = 'MA'
         Zip = samp['ZIPCODE'].ix[rows[i]] # ZIPCODE
-        
-        call = 'http://api.walkscore.com/score?format=xml&address='+str(Stnum)+'%'+str(Stname)+'%20'+str(st_nm_su)+'%20'+str(City)+'%20'+str(State)+'%20'+str(Zip)+'&lat='+str(LAT)+'&'+'lon='+str(LON)+'&wsapikey='+str(key)+'&format=XML' 
+
+        call = 'http://api.walkscore.com/score?format=xml&address='+str(Stnum)+'%'+str(Stname)+'%20'+str(st_nm_su)+'%20'+str(City)+'%20'+str(State)+'%20'+str(Zip)+'&lat='+str(LAT)+'&'+'lon='+str(LON)+'&wsapikey='+str(key)+'&format=XML'
         #url_web = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat=47.6085&lon=-122.3295&wsapikey='+key+'&format=XML'
         request = requests.get(call)
-        
-        tree = ET.fromstring(request.content)
-        for child in tree.findall('{http://walkscore.com/2008/results}walkscore'):
-            wklist.append(int(child.text))
-            print child.text #This is the walkscore
-            print tree
-            """ ParseError: no element found: line 1, column 0"""
+        try:
+            tree = ET.fromstring(request.content)
+            for child in tree.findall('{http://walkscore.com/2008/results}walkscore'):
+                print "Am I coming here when there is an error?"
+                wklist.append(int(child.text))
+                print child.text #This is the walkscore
+                print tree
+        except ParseError as e:
+            print "Error likely due to absence of walkscore element in response"
+            wklist.append(np.NAN)
+    samp['walkscore'] = np.zeros(len(wklist))
     samp['walkscore'] = wklist
     df.append(samp)
 
@@ -94,8 +103,8 @@ samp = samp[['uniqueLatLon','walkscore']]
 data = pd.merge(samp,master,on='uniqueLatLon')
 data.to_csv('full_data'+'0'+'.csv')
 data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
-    
-    
+
+
 # Create linear regression object
 regr = lm.LinearRegression()
 
