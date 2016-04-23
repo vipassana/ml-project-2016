@@ -32,20 +32,21 @@ for filename in filenames:
 
 # Concatenate all data into one DataFrame
 big_frame = pd.concat(dfs, ignore_index=True)
-big_frame['GPS_DATETIMESTAMP'] = pd.to_datetime(big_frame['GPS_DATETIMESTAMP'])
-big_frame['hour'] = big_frame['GPS_DATETIMESTAMP'].apply(lambda x: x.hour)
+
+data = pd.read_csv('full_data0.csv') #careful: this is not the data that we will use. This is temporary.
+
+# data = pd.merge(data,big_frame,on='uniqueLatLon')
+# data.reset_index()
+
+data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
+data['hour'] = data['GPS_DATETIMESTAMP'].apply(lambda x: x.hour)
 
 cols_to_norm = [ u'GPS_LAT', u'GPS_LON', u'GPS_Speed', u'GPS_Alt',u'GPS_Sats', u'GPS_Fix', u'GPS_Quality', u'AMB_Temp', u'AMB_Humd',u'AMB_Lux', u'AMB_Snd', u'AMB_SndMin', u'AMB_SndMax', u'AMB_SndMea',u'RDQ_AcX', u'RDQ_AcXMin', u'RDQ_AcXMax', u'RDQ_AcXMea', u'RDQ_AcY',u'RDQ_AcYMin', u'RDQ_AcYMax', u'RDQ_AcYMea',u'RDQ_AcZMax', u'RDQ_AcZMea']
-big_frame[cols_to_norm] = big_frame[cols_to_norm].apply(lambda x: (x - x.mean()) / (x.max() - x.min()))
+data[cols_to_norm] = data[cols_to_norm].apply(lambda x: (x - x.mean()) / (x.max() - x.min()))
 
 # Split data into training and testing
-train_size = int(0.6*len(big_frame))
-rows = random.sample(big_frame.index, train_size)
-samp_train = big_frame.ix[rows]
-y_train = samp_train['walkscore']
-
 var_cols = ['hour',u'GPS_Speed',u'AMB_Temp', u'AMB_SndMea', u'RDQ_AcZMea']#u'GPS_Speed', u'GPS_Alt',u'AMB_Temp', u'AMB_Humd', u'AMB_SndMea',u'RDQ_AcXMea', u'RDQ_AcY', u'RDQ_AcYMea', u'RDQ_AcZMea']
-X_train, X_test, y_train, y_test = train_test_split(big_frame[var_cols], big_frame['walkscore'], test_size=0.33, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(data[var_cols], data['walkscore'], test_size=0.33, random_state=42)
 
 """
 Feature selection
@@ -72,7 +73,6 @@ for length, vector in zip(pca.explained_variance_, pca.components_):
     v = vector * 3 * np.sqrt(length)
     plt.plot([0, v[0]], [0, v[1]], '-k', lw=3)
 plt.axis('equal');
-
 """
 Linear model
 """
@@ -114,12 +114,22 @@ Lasso_coef=Lasso.coef_
 #Out of sample
 p_OS=Lasso.predict(X_test)
 err_OS=p_OS-y_test
-R_2_OS_Ridge=1-np.var(err_OS)/np.var(y_test)
-print("The R-squared we found for OS Ridge is: {0}".format(R_2_OS_Ridge))
+R_2_OS_Lasso=1-np.var(err_OS)/np.var(y_test)
+print("The R-squared we found for OS Ridge is: {0}".format(R_2_OS_Lasso))
 
 
 """
 Neural networks
 """
-
+from function_approximator import FunctionApproximator
+fa = FunctionApproximator(n_out=1, n_hidden=5)
+x_nn = np.array(X_train[['GPS_Speed','hour']]).reshape((45,2))
+y_nn = np.array(y_train).reshape((45,))
+fa.train(x_nn,y_nn,learning_rate=0.05, n_epochs=200000, report_frequency=20000)
+Y_pred = fa.get_y_pred()
+#fig = plt.figure(figsize=[12,8])
+#plt.plot(X, Y, 'o');
+#plt.plot(X, Y_pred, 'x');
+#[w,b]=fa.get_weights()
+#print("w:", w)
 
