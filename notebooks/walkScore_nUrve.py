@@ -8,6 +8,7 @@ import pandas as pd
 #import matplotlib.pyplot as plt
 #import urllib2
 import requests
+import glob
 #import json
 import xml.etree.ElementTree as ET
 import random
@@ -18,8 +19,8 @@ from xml.etree.ElementTree import ParseError
 
 random.seed('2339')
 
-master = pd.read_csv('../data/nUrve_master_0321.csv')
-sampleB = pd.read_csv('../data/pilotB_sample1.csv')
+master = pd.read_csv('nUrve_master_0321.csv')
+sampleB = pd.read_csv('pilotB_sample1.csv')
 
 
 group_keys = ['b901157a817d3058367b22fdabcc6596'] # Sara
@@ -55,14 +56,29 @@ Zip = '9810' # ZIPCODE
 #str_call = 'http://api.walkscore.com/score?format=xml&address=1119%8th%20Avenue%20Seattle%20WA%2098101&lat='+LAT+'&lon='+LON+'&wsapikey='+mykey+'&format=JSON'
 
 """
-nUrv_add = pd.read_csv('../data/nUrveLocAdd.csv')
+nUrv_add = pd.read_csv('nUrveLocAdd.csv')
 nUrv_add = nUrv_add.rename(index=str, columns={"uniqueLatL": "uniqueLatLon"});
 nUrv_add = nUrv_add[['uniqueLatLon',u'PID','ST_NUM', u'ST_NAME', u'ST_NAME_SU', u'UNIT_NUM',u'ZIPCODE', u'full_addre', u'Latitude', u'Longitude']]
+
+
+
+# get data file names
+path =r'/home/saf537/Documents/CUSP/Spring/MLC/ml-project-2016/notebooks/data_walk'
+filenames = glob.glob(path + "/*.csv")
+
+dfs = []
+for filename in filenames:
+    dfs.append(pd.read_csv(filename))
+
+# Concatenate all data into one DataFrame
+big_frame = pd.concat(dfs, ignore_index=True)
 
 df = pd.DataFrame([],columns = nUrv_add.columns)
 df['walkscore'] = []
 
-spl_size = 10
+spl_size = 5000
+
+nUrv_add = nUrv_add - big_frame;
 
 for key in group_keys:
     rows = random.sample(nUrv_add.index, spl_size)
@@ -88,10 +104,10 @@ for key in group_keys:
         try:
             tree = ET.fromstring(request.content)
             for child in tree.findall('{http://walkscore.com/2008/results}walkscore'):
-                print "Am I coming here when there is an error?"
+                # print "Am I coming here when there is an error?"
                 wklist.append(int(child.text))
-                print child.text #This is the walkscore
-                print tree
+                # print child.text #This is the walkscore
+                # print tree
         except ParseError as e:
             print "Error likely due to absence of walkscore element in response"
             wklist.append(np.NAN)
@@ -99,12 +115,15 @@ for key in group_keys:
     samp['walkscore'] = wklist
     df.append(samp)
 
+n_files = str(len(filenames))
+
 samp = samp[['uniqueLatLon','walkscore']]
 data = pd.merge(samp,master,on='uniqueLatLon')
-data.to_csv('full_data'+'0'+'.csv')
+data = data[data['walkscore'].isnull()!=True]
+data.to_csv('full_data'+n_files+'.csv')
 data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
 
-
+"""
 # Create linear regression object
 regr = lm.LinearRegression()
 
@@ -123,6 +142,7 @@ plt.xticks(())
 plt.yticks(())
 
 plt.show()
+"""
 
 #url = 'https://nycopendata.socrata.com/views/%s' % (dataId)
 
