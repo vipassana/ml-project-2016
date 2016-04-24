@@ -5,16 +5,11 @@ Created on Thu Apr  7 12:06:06 2016
 @author: saf537
 """
 import pandas as pd
-#import matplotlib.pyplot as plt
-#import urllib2
 import requests
 import glob
-#import json
 import xml.etree.ElementTree as ET
 import random
 import numpy as np
-import sklearn.linear_model as lm
-import matplotlib.pyplot as plt
 from xml.etree.ElementTree import ParseError
 
 random.seed('2339')
@@ -72,13 +67,28 @@ for filename in filenames:
 
 # Concatenate all data into one DataFrame
 big_frame = pd.concat(dfs, ignore_index=True)
+#big_frame = big_frame[['uniqueLatLon',u'PID','ST_NUM', u'ST_NAME', u'ST_NAME_SU', u'UNIT_NUM',u'ZIPCODE', u'full_addre', u'Latitude', u'Longitude']]
+
+
+
+"""
+
+CAREFUL!!!
+
+"""
+ind = []
+arr = np.array(big_frame['uniqueLatLon'])
+for i in range(0,len(nUrv_add)):
+    ind.append(np.array(nUrv_add['uniqueLatLon'].iloc[i]) not in arr)
+    
+nUrv_add = nUrv_add[ind]
+nUrv_add.reset_index()
 
 df = pd.DataFrame([],columns = nUrv_add.columns)
 df['walkscore'] = []
 
 spl_size = 5000
 
-nUrv_add = nUrv_add - big_frame;
 
 for key in group_keys:
     rows = random.sample(nUrv_add.index, spl_size)
@@ -111,16 +121,18 @@ for key in group_keys:
         except ParseError as e:
             print "Error likely due to absence of walkscore element in response"
             wklist.append(np.NAN)
+    
     samp['walkscore'] = np.zeros(len(wklist))
     samp['walkscore'] = wklist
     df.append(samp)
 
-n_files = str(len(filenames))
+n_files = str(len(filenames)+1)
 
 samp = samp[['uniqueLatLon','walkscore']]
-data = pd.merge(samp,master,on='uniqueLatLon')
-data = data[data['walkscore'].isnull()!=True]
-data.to_csv('full_data'+n_files+'.csv')
+#data = pd.merge(samp,master,on='uniqueLatLon')
+#data = data[data['walkscore'].isnull()!=True]
+samp = samp[samp['walkscore'].isnull()!=True]
+samp.to_csv('data_walk/walkscores'+n_files+'.csv')
 data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
 
 """
