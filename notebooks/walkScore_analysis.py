@@ -13,6 +13,8 @@ from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.decomposition import PCA
 from sklearn import linear_model
+import statsmodels.formula.api as smf
+import seaborn as sns
 
 
 """
@@ -39,11 +41,11 @@ def binning(col, cut_points, labels=None):
 data = pd.read_csv('df_walkscore.pkl')
 data['GPS_DATETIMESTAMP'] = pd.to_datetime(data['GPS_DATETIMESTAMP'])
 data['hour_slot'] = data['GPS_DATETIMESTAMP'].apply(lambda x: x.hour)
-data = data.groupby(['road_id','walkscore','uniqueLatLon']).aggregate('mean')
+data = data.groupby(['road_id']).aggregate('mean')
 data = data.reset_index()
 norm_road = ['is_dark','is_loud','bumpflag']
-for col in norm_road:
-    data[col] = data[col]/data['road_length']
+#for col in norm_road:
+#    data[col] = data[col]/data['road_length']
 data["hour_slot"] = binning(col = data["hour_slot"], cut_points = [11.,13.,15.], labels = ["morning","noon","afternoon","later_afternoon"])
 
 data['morning'] = np.nan
@@ -51,13 +53,21 @@ data['noon'] = np.nan
 data['afternoon'] = np.nan
 data['later_afternoon'] = np.nan
 data[["morning","noon","afternoon","later_afternoon"]] = pd.get_dummies(data["hour_slot"])
-cols_to_norm1 = [ 'walkscore',u'AMB_Lux',  u'AMB_SndMea','acel','is_dark','is_loud','bumpflag']
-data[cols_to_norm1] = (data[cols_to_norm1])/(data[cols_to_norm1].max())
+cols_to_norm1 = [ u'AMB_Lux',  u'AMB_SndMea','acel','is_dark','is_loud','bumpflag']
+data[cols_to_norm1] = (data[cols_to_norm1])/(data[cols_to_norm1].max()-data[cols_to_norm1].min())
+cols_to_norm2 = ['walkscore']
+data[cols_to_norm2] = (data[cols_to_norm2])/(data[cols_to_norm2].max())
 
+# Some useful plots
+
+plt.scatter(data['AMB_SndMea'],data['walkscore'])
+plt.xlabel("Normalized Sound",fontsize=14)
+plt.ylabel("Normalized Walkscore",fontsize=14)
+plt.title("Lower Walkscores only happen at higher sound levels",fontsize=18)
 
 
 # Split data into training and testing
-var_cols = ['morning','noon','afternoon','later_afternoon',u'AMB_Lux', u'AMB_SndMea',u'acel', u'is_dark', u'is_loud', u'bumpflag',]#u'GPS_Speed', u'GPS_Alt',u'AMB_Temp', u'AMB_Humd', u'AMB_SndMea',u'RDQ_AcXMea', u'RDQ_AcY', u'RDQ_AcYMea', u'RDQ_AcZMea']
+var_cols = ['bumpflag','is_dark','is_loud',"morning","noon","afternoon"]#u'GPS_Speed', u'GPS_Alt',u'AMB_Temp', u'AMB_Humd', u'AMB_SndMea',u'RDQ_AcXMea', u'RDQ_AcY', u'RDQ_AcYMea', u'RDQ_AcZMea']
 X_train, X_test, y_train, y_test = train_test_split(data[var_cols], data['walkscore'], test_size=0.33, random_state=42)
 
 """
@@ -69,8 +79,13 @@ Feature selection
 """
 Linear model
 """
-
+ 
 result=ols(y=y_train,x=pd.DataFrame(X_train))
+
+result1 = smf.ols(formula='walkscore ~ morning + noon + afternoon + bumpflag + is_dark + is_loud ', data=pd.concat((pd.DataFrame(X_train),pd.DataFrame(y_train)),axis=1))
+res = result1.fit()
+print res.summary()
+
 R_2_IS=result.r2  # get R2
 OLS_coef=result.beta
 
@@ -139,18 +154,19 @@ print("The R-squared we found for OS Ridge is: {0}".format(R_2_OS_Ridge))
 Neural networks
 """
 from function_approximator import FunctionApproximator
-fa = FunctionApproximator(n_out=1, n_hidden=5,n_in=10)
-x_nn = np.array(X_train).reshape((len(X_train),10))
+nin = len(X_train.columns)
+fa = FunctionApproximator(n_out=1, n_hidden=25,n_in=nin)
+x_nn = np.array(X_train).reshape((len(X_train),nin))
 y_nn = np.array(y_train).reshape((len(y_train),))
-fa.train(x_nn,y_nn,learning_rate=0.05, n_epochs=2000000, report_frequency=500000)
+fa.train(x_nn,y_nn,learning_rate=0.05, n_epochs=1000000, report_frequency=500000)
 Y_pred = fa.get_y_pred()
 is_err_nn = (Y_pred-np.array(y_nn).reshape(len(y_nn),1))
 R_2_IS_nn = 1-np.var(is_err_nn)/np.var(np.array(y_nn))
 print(R_2_IS_nn)
 
-y_os_nn = fa.predict_model(np.array(X_test).reshape((len(X_test),10)))
+y_os_nn = fa.predict_model(np.array(X_test).reshape((len(X_test),nin)))
 os_err_nn = (y_os_nn-np.array(y_test).reshape((len(y_test),1)))
-R_2_OS_nn = 1-np.var(os_err_nn)/np.var(np.array(y_nn))
+R_2_OS_nn = 1-np.var(os_err_nn)/np.var(np.array(y_test).reshape((len(y_test),)))
 print(R_2_OS_nn)
 
 
