@@ -1,4 +1,4 @@
-.csv
-/data/*
-.dot
-.png
+*.csv
+data/*
+*.dot
+*.png
